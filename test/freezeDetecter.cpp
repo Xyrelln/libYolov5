@@ -7,15 +7,12 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-#define BRIGHTNESS_THRESHOLD 45
-
 
 int main() {
 
     // setup model
-    YoloV5 yolo("/home/onion/dev/YoloV5-LibTorch/test/yolov5s.cpu.pt", false);
-    // YoloV5 yolo(torch::cuda::is_available() ? "/home/onion/dev/YoloV5-LibTorch/test/yolov5s.cuda.pt" : "/home/onion/dev/YoloV5-LibTorch/test/yolov5s.cpu.pt", torch::cuda::is_available());
-    string folder = "/home/onion/dev/mmd/yolov5/imgOutput";
+    YoloV5 yolo("/home/onion/dev/YoloV5-LibTorch/test/model.pt", false);
+    string folder = "/home/onion/dev/YoloV5-LibTorch/imgOutput";
     vector<string> images;
 
     for (const auto & image : fs::directory_iterator(folder)) {
@@ -24,7 +21,8 @@ int main() {
 
     sort(images.begin(), images.end());  // directory_iterator won't promise sequence
 
-    cv::Mat cropped_frame;  // this for loop finds the first detection of a sequence of images and crop it
+    // this for loop finds the first detection of a sequence of images and crop it
+    cv::Rect crop_region;  
     for (const auto & image : images) {
         cv::Mat frame = cv::imread(image);
         std::vector<torch::Tensor> r = yolo.prediction(frame);  // rows of predictions. Predictions is {xyxy, conf, class} with length of 6
@@ -36,37 +34,50 @@ int main() {
         }
         // if there is, predict and crop that image to prediction
         else {
-            frame = yolo.drawRectangle(frame, r[0], 1);
+            cout << "Detected character in " << image << endl;
+            // frame = yolo.drawRectangle(frame, r[0], 1);
             float x1 = *r[0][0][0].data_ptr<float>();
             float y1 = *r[0][0][1].data_ptr<float>();
             float x2 = *r[0][0][2].data_ptr<float>();
             float y2 = *r[0][0][3].data_ptr<float>();
 
-            float x = (x1 + x2) / 2;
-            float y = (y1 + y2) / 2;
-            float w = (x2 - x1) / 2;
-            float h = (y2 - y1) / 2;
-
-            cv::Rect crop_region(x, y, w, h);
-            cropped_frame = frame(crop_region);
+            crop_region.x = (int)x1;  // top left
+            crop_region.y = (int)y1;  // top left
+            crop_region.width = (int)(x2 - x1);
+            crop_region.height = (int)(y2 - y1) / 2;  // get top half of the character model
+        
+            // // test 0
+            // cv::Mat cropped_frame = frame(crop_region);
             // cv::imshow("", cropped_frame);
             // cv::waitKey(0);
-            cout << "image " << image << " processed: " << endl;
+
             break;
         }
     }
 
     vector<int> this_hash, last_hash;
-    for (int i = 0; i < images.size(); i++) {
+    for (int i = 0; i < images.size(); i++) {  // read images and each crop with crop_region. Then check diff of AverageHash of cropped reigon.
         cv::Mat image = cv::imread(images[i]);
-        this_hash = AverageHash(image);
+        cv::Mat cropped_image = image(crop_region);
+
+        // // test 0
+        // cv::Mat temp;
+        // cv::resize(cropped_image, temp, cv::Size(640, 640), 0, 0, cv::INTER_NEAREST);
+        // cv::imshow("0", temp);
+        // cv::waitKey(0);
+
+        this_hash = AverageHash(cropped_image);
         
         if (i > 0) {
-            if (Difference(this_hash, last_hash) > BRIGHTNESS_THRESHOLD) {
-                cout << "Frame " << i << " changed" << endl;
+            int diff = Difference(this_hash, last_hash);
+            if (diff > DIFF_THRESHOLD) {
+                cout << "Frame: " << images[i] << " changed" << endl;
+                cout << "Diff: " << diff << endl;
                 return 0;
             }
+            // cout << "Diff for frame " << i << ": " << diff << endl;  // test 0 
         }
+        last_hash = this_hash;
     }
 
     cout << "Nothing changed detected" << endl;

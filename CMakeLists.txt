@@ -22,7 +22,7 @@ include_directories(./include/ )
 add_subdirectory(./src)
 add_subdirectory(./test)
 
-install(TARGETS verification YoloV5
+install(TARGETS verification YoloV5 AverageHash
     RUNTIME DESTINATION ${CMAKE_SOURCE_DIR}/bin
     ARCHIVE DESTINATION ${CMAKE_SOURCE_DIR}/lib
 )

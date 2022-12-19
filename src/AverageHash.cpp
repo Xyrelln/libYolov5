@@ -10,20 +10,38 @@ vector<int> AverageHash(cv::Mat image, int width, int height, int threshold) {
 
     cv::Mat gray_image;
     cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);
-
+;
     cv::Mat binarized_image;
     cv::threshold(gray_image, binarized_image, threshold, 255, cv::THRESH_BINARY);
+
+    vector<int> gray_vector;
+    for (int i = 0; i < binarized_image.rows; i++)
+    {
+        for (int j = 0; j < binarized_image.cols; j++)
+        {
+            uchar value = binarized_image.at<uchar>(i, j);
+            if (value == 0)
+            {
+                gray_vector.push_back(0);
+            }
+            else
+            {
+                gray_vector.push_back(1);
+            }
+        }
+    }
+
+    // cv::Mat temp;  // test 0
+    // cv::resize(binarized_image, temp, cv::Size(640, 640), 0, 0, cv::INTER_NEAREST);
+    // cv::imshow("", temp);
+    // cv::waitKey(0);
     
-    cv::Mat flat = image.reshape(1, binarized_image.total()*binarized_image.channels());
-    vector<int> gray_array = image.isContinuous()? flat : flat.clone();
-    
-    
-    return gray_array;
+    return gray_vector;
 } 
 
 vector<int> AverageHash(string path, int width, int height, int threshold) {
     cv::Mat image = cv::imread(path);
-    AverageHash(image);
+    return AverageHash(image);
 }
 
 int Difference(vector<int> hash1, vector<int> hash2) {
@@ -40,5 +58,6 @@ int Difference(vector<int> hash1, vector<int> hash2) {
     }
 
     diff += max_size - min_size;
+
     return diff;
 }
