@@ -1,4 +1,4 @@
-# Project Libtorch-YOLOv5
+# Project LibYOLOv5
 This project is a C++ library of YOLOv5, providing basic functions in production.
 
 ## Prerequisites
